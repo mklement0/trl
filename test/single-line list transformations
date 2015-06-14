@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+
+# ---
+# IMPORTANT: Use the following statement at the TOP OF EVERY TEST SCRIPT
+#            to ensure that this package's 'bin/' subfolder is added to the path so that
+#            this package's CLIs can be invoked by their mere filename in the rest
+#            of the script.
+# ---
+PATH=${PWD%%/test*}/bin:$PATH
+
+# Helper function for error reporting.
+die() { (( $# > 0 )) && echo "$*" >&2; exit 1; }
+
+
+diff <(trl 'one two three') - <<'EOF' || die "single operand: unexpected output"
+one
+two
+three
+EOF
+
+diff <(trl one two three) - <<'EOF' || die "multiple operands: unexpected output"
+one
+two
+three
+EOF
+
+# --
+
+diff <(trl $'one "two (2)" \'three\'') - <<'EOF' || die "single operand with selective quoting: unexpected output"
+one
+two (2)
+three
+EOF
+
+diff <(trl one "two (2)" 'three') - <<'EOF' || die "multiple operands with embedded whitespace: unexpected output"
+one
+two (2)
+three
+EOF
+
+# --
+
+diff <(trl -S / $'one "two (2)" \'three\'') - <<'EOF' || die "-S: single operand: unexpected output"
+one/two (2)/three
+EOF
+
+diff <(trl -S / one "two (2)" 'three') - <<'EOF' || die "-S: multiple operands: unexpected output"
+one/two (2)/three
+EOF
+
+# --
+
+diff <(trl -s '/' $'one/"two (2)"/\'three\'') - <<'EOF' || die "-s: single operand: unexpected output"
+one
+two (2)
+three
+EOF
+
+diff <(trl -s '/' -S @ $'one/"two (2)"/\'three\'') - <<'EOF' || die "-s + -S: single operand: unexpected output"
+one@two (2)@three
+EOF
+
+diff <(trl -s '/' -k  $'one/"two (2)"/\'three\'') - <<'EOF' || die "-s + -k: single operand: unexpected output"
+one
+"two (2)"
+'three'
+EOF
+
+# --
+
+diff <(trl -s '[() -]' -S ',' '(789) 123-456') - <<'EOF' || die "-s with regex + -S: single operand: unexpected output"
+789,123,456
+EOF
