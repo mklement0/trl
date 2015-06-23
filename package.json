@@ -2,7 +2,7 @@
   "name": "trl",
   "description": "a Unix CLI for transforming (reformatting) lists of unquoted or quoted strings",
   "private": false,
-  "version": "0.1.1",
+  "version": "0.2.0",
   "os": [
     "linux",
     "darwin"
