@@ -5,7 +5,7 @@ kTHIS_NAME=$(basename "$BASH_SOURCE")
 unset CDPATH  # to prevent unpredictable `cd` behavior
 
 # Output version number and exit, if requested. Note that the `ver='...'` statement is automatically updated by `make version VER=<newVer>` - DO keep the 'v' suffix in the variable _definition_.
-[[ $1 == '--version' ]] && { declare ver='v0.2.0'; echo "$kTHIS_NAME ${ver#v}"; exit 0; }
+[[ $1 == '--version' ]] && { declare ver='v0.3.0'; echo "$kTHIS_NAME ${ver#v}"; exit 0; }
 
 # --- BEGIN: functions
 
@@ -33,7 +33,7 @@ transform() {
   # Note: Thanks to -n, the script passed to -e is executed for *every line* of input.
   perl -MText::ParseWords -ne '
     chomp;
-    sub enclose { return $ENV{odelim} . $_ . $ENV{odelim}; }
+    sub enclose { return $ENV{odelimOpen} . $_ . $ENV{odelimClose}; }
     my @flds = grep { $_ =~ /\S/ } Text::ParseWords::parse_line($ENV{sep}, $ENV{keepQuotes}, $_);
     if ($#flds >= 0) {
       print join($ENV{osep}, map { enclose $_ } @flds);
@@ -124,17 +124,22 @@ DESCRIPTION
       any string, but note that on *input* only single- and double-quotes
       are recognized; cannot be combined with -k.
       Use -D '' to make all output items unquoted.
+      If a single char. is specified, it is used as both the opening and 
+      closing delimiter; otherwise, the first *half* of the specified string
+      is used as the opening delimiter, and the second half as the closing one.
     -W wrapText
       Specifies output wrapper text to place around the entire output list,
-      including  desired whitespace, if any: the first *half* of the text is
-      placed before the result, the second one after; if the output list is
-      multi-line, a newline is appended / prepended to the halves.
+      including  desired whitespace, if any: if a single char. is specified,
+      that char. is used both before and the after the output list; otherwise,
+      the first *half* of the text is placed before, and the second one after;
+      if the output list is multi-line, a newline is appended / prepended to
+      opening/closing string.
     -R ors
       Specifies the output record separator, which only applies to multi-line
       input whose lines contain multiple items each: by default, the output
       record separator is set to the same value as the input item separator,
       so that a multi-line list results in a uniformly separated single-line
-      list. Specify -R <newline to instead retain the line breaks from the
+      list. Specify -R <newline> to instead retain the line breaks from the
       input (while transforming the items on each line), or pass an
       alternative separator to replace the line breaks.
 
@@ -239,7 +244,7 @@ if (( $# > 0 )); then
     txt=$(printf '%s\n' "$@")
   fi
 else # read from stdin    
-  txt=$(</dev/stdin)
+  txt=$(</dev/stdin) # note: the command substitution strips trailing newlines
   (( $(grep -c '^' <(printf %s "$txt")) <= 1 )) && inputIsSingleLine=1
 fi
 
@@ -276,33 +281,51 @@ else #  multi-line input
 
 fi
 
+# If a delimiter was specified, split into opening and closing delimiter, if necessary.
+odelimOpen= odelimClose=
+if [[ -n $odelim ]]; then
+  if (( ${#odelim} == 1 )); then # just 1 char? use as both openening and closing delim.
+    odelimOpen=$odelim
+    odelimClose=$odelimOpen
+  else # split in half
+    odelimOpen=${odelim:0:${#odelim}/2}
+    odelimClose=${odelim:${#odelimOpen}}
+  fi
+fi
+
+
 # If wrapper string was specified, split into prologue and epilogue.
-outWrapperBefore= outWrapperAfter=
+outWrapperOpen= outWrapperClose=
 if [[ -n $outWrapper ]]; then
-  outWrapperBefore=${outWrapper:0:${#outWrapper}/2}
-  outWrapperAfter=${outWrapper:${#outWrapperBefore}}
+  if (( ${#outWrapper} == 1 )); then # just 1 char? use as both openening and closing delim.
+    outWrapperOpen=$outWrapper
+    outWrapperClose=$outWrapperOpen
+  else # split in half
+    outWrapperOpen=${outWrapper:0:${#outWrapper}/2}
+    outWrapperClose=${outWrapper:${#outWrapperOpen}}
+  fi
   # Adjust the wrapper strings, if the output is multi-line.
   if [[ $osep =~ $'\n' || $orsep =~ $'\n' ]]; then
-    [[ $outWrapperBefore =~ $'\n' ]] || outWrapperBefore="$(rtrimSingleLine "$outWrapperBefore")"$'\n'
+    [[ $outWrapperOpen =~ $'\n' ]] || outWrapperOpen="$(rtrimSingleLine "$outWrapperOpen")"$'\n'
     # The closing string doesn't need a leading \n, because transform() output always ends in \n.
-    [[ $outWrapperAfter =~ ^$'\n' ]] || outWrapperAfter=$'\n'"$(ltrimSingleLine "$outWrapperAfter")"
+    [[ $outWrapperClose =~ ^$'\n' ]] || outWrapperClose=$'\n'"$(ltrimSingleLine "$outWrapperClose")"
   fi
 fi
 
 # Print opening wrapper string, if any.
-[[ -n $outWrapperBefore ]] && printf %s "$outWrapperBefore"
+[[ -n $outWrapperOpen ]] && printf %s "$outWrapperOpen"
 
-# pv odelim sep osep orsep keepQuotes txt
+# pv odelimOpen odelimClose sep osep orsep keepQuotes txt
 
   # Export the behavior-controlling variables for use by the Perl command inside transform().
-export odelim sep osep rsep orsep keepQuotes
+export odelimOpen odelimClose sep osep rsep orsep keepQuotes
 
   # Perform the transformation.
 transform  < <(printf %s "$txt") || die
 
 # Print closing wrapper string, if any.
 # Either way, print a terminating \n, because transform() - by design - returns its output without one.
-[[ -n $outWrapperAfter ]] && printf '%s\n' "$outWrapperAfter" || printf '\n'
+[[ -n $outWrapperClose ]] && printf '%s\n' "$outWrapperClose" || printf '\n'
 
 exit 0
 

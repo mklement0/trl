@@ -162,17 +162,22 @@ DESCRIPTION
       any string, but note that on *input* only single- and double-quotes
       are recognized; cannot be combined with -k.
       Use -D '' to make all output items unquoted.
+      If a single char. is specified, it is used as both the opening and 
+      closing delimiter; otherwise, the first *half* of the specified string
+      is used as the opening delimiter, and the second half as the closing one.
     -W wrapText
       Specifies output wrapper text to place around the entire output list,
-      including  desired whitespace, if any: the first *half* of the text is
-      placed before the result, the second one after; if the output list is
-      multi-line, a newline is appended / prepended to the halves.
+      including  desired whitespace, if any: if a single char. is specified,
+      that char. is used both before and the after the output list; otherwise,
+      the first *half* of the text is placed before, and the second one after;
+      if the output list is multi-line, a newline is appended / prepended to
+      opening/closing string.
     -R ors
       Specifies the output record separator, which only applies to multi-line
       input whose lines contain multiple items each: by default, the output
       record separator is set to the same value as the input item separator,
       so that a multi-line list results in a uniformly separated single-line
-      list. Specify -R <newline to instead retain the line breaks from the
+      list. Specify -R <newline> to instead retain the line breaks from the
       input (while transforming the items on each line), or pass an
       alternative separator to replace the line breaks.
 
@@ -216,6 +221,10 @@ This project gratefully depends on the following open-source components, accordi
 Versioning complies with [semantic versioning (semver)](http://semver.org/).
 
 <!-- NOTE: An entry template for a new version is automatically added each time `make version` is called. Fill in changes afterwards. -->
+
+* **[v0.3.0](https://github.com/mklement0/trl/compare/v0.2.0...v0.3.0)** (2015-06-24):
+  * [new feature, behavior change] The output-delimiter string passed to `-D` may now be a symmetrical *multi-character* string such as `()`, in which case the 1st _half_ acts as the opening delimiter, and the 2nd half as the closing delimiter.
+  * [new feature, behavior change] The wrapper string passed to `-W` may now be a *single* character (in addition to a symmetrical multi-char. string), in which case that same character is used as both the opening and closing wrapper text.
 
 * **[v0.2.0](https://github.com/mklement0/trl/compare/v0.1.1...v0.2.0)** (2015-06-23):
   * [fix resulting in behavior change] Specifying a multi-line list as the only operand (e.g., `trl <<<$'line 1\nline 2\nline 3'` now behaves the same as passing the same string via stdin; i.e., in both cases, the result is a *single-line* list.
