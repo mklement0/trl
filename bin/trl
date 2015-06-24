@@ -5,7 +5,7 @@ kTHIS_NAME=$(basename "$BASH_SOURCE")
 unset CDPATH  # to prevent unpredictable `cd` behavior
 
 # Output version number and exit, if requested. Note that the `ver='...'` statement is automatically updated by `make version VER=<newVer>` - DO keep the 'v' suffix in the variable _definition_.
-[[ $1 == '--version' ]] && { declare ver='v0.3.0'; echo "$kTHIS_NAME ${ver#v}"; exit 0; }
+[[ $1 == '--version' ]] && { declare ver='v0.3.1'; echo "$kTHIS_NAME ${ver#v}"; exit 0; }
 
 # --- BEGIN: functions
 
@@ -133,15 +133,15 @@ DESCRIPTION
       that char. is used both before and the after the output list; otherwise,
       the first *half* of the text is placed before, and the second one after;
       if the output list is multi-line, a newline is appended / prepended to
-      opening/closing string.
+      the opening/closing string.
     -R ors
       Specifies the output record separator, which only applies to multi-line
       input whose lines contain multiple items each: by default, the output
       record separator is set to the same value as the input item separator,
       so that a multi-line list results in a uniformly separated single-line
-      list. Specify -R <newline> to instead retain the line breaks from the
+      list. Specify -R $'\n' to instead retain the line breaks from the
       input (while transforming the items on each line), or pass an
-      alternative separator to replace the line breaks.
+      alternative separator to replace them.
 
 PREREQUISITES
   Perl 5 must be installed.

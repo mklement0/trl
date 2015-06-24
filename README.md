@@ -171,15 +171,15 @@ DESCRIPTION
       that char. is used both before and the after the output list; otherwise,
       the first *half* of the text is placed before, and the second one after;
       if the output list is multi-line, a newline is appended / prepended to
-      opening/closing string.
+      the opening/closing string.
     -R ors
       Specifies the output record separator, which only applies to multi-line
       input whose lines contain multiple items each: by default, the output
       record separator is set to the same value as the input item separator,
       so that a multi-line list results in a uniformly separated single-line
-      list. Specify -R <newline> to instead retain the line breaks from the
+      list. Specify -R $'\n' to instead retain the line breaks from the
       input (while transforming the items on each line), or pass an
-      alternative separator to replace the line breaks.
+      alternative separator to replace them.
 
 PREREQUISITES
   Perl 5 must be installed.
@@ -221,6 +221,9 @@ This project gratefully depends on the following open-source components, accordi
 Versioning complies with [semantic versioning (semver)](http://semver.org/).
 
 <!-- NOTE: An entry template for a new version is automatically added each time `make version` is called. Fill in changes afterwards. -->
+
+* **[v0.3.1](https://github.com/mklement0/trl/compare/v0.3.0...v0.3.1)** (2015-06-24):
+  * [doc] Copy-editing of CLI help and read-me.
 
 * **[v0.3.0](https://github.com/mklement0/trl/compare/v0.2.0...v0.3.0)** (2015-06-24):
   * [new feature, behavior change] The output-delimiter string passed to `-D` may now be a symmetrical *multi-character* string such as `()`, in which case the 1st _half_ acts as the opening delimiter, and the 2nd half as the closing delimiter.
