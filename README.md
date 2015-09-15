@@ -38,7 +38,7 @@ See below for examples and the [usage](#usage) chapter for details.
 
 ```
   # Single-line list to multi-line list:
-$ trl '"one", "two", "three"
+$ trl '"one", "two", "three"'
 one
 two
 three
@@ -95,7 +95,7 @@ With [Node.js](http://nodejs.org/) or [io.js](https://iojs.org/) installed, inst
 
 <!-- DO NOT EDIT THE FENCED CODE BLOCK and RETAIN THIS COMMENT: The fenced code block below is updated by `make update-readme/release` with CLI usage information. -->
 
-```
+```nohighlight
 $ trl --help
 
 SYNOPSIS
@@ -221,6 +221,9 @@ This project gratefully depends on the following open-source components, accordi
 Versioning complies with [semantic versioning (semver)](http://semver.org/).
 
 <!-- NOTE: An entry template for a new version is automatically added each time `make version` is called. Fill in changes afterwards. -->
+
+* **[v0.3.2](https://github.com/mklement0/trl/compare/v0.3.1...v0.3.2)** (2015-09-15):
+  * [dev] Makefile improvements; various other behind-the-scenes tweaks.
 
 * **[v0.3.1](https://github.com/mklement0/trl/compare/v0.3.0...v0.3.1)** (2015-06-24):
   * [doc] Copy-editing of CLI help and read-me.
