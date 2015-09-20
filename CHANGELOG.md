@@ -4,6 +4,10 @@ Versioning complies with [semantic versioning (semver)](http://semver.org/).
 
 <!-- NOTE: An entry template for a new version is automatically added each time `make version` is called. Fill in changes afterwards. -->
 
+* **[v0.3.3](https://github.com/mklement0/trl/compare/v0.3.2...v0.3.3)** (2015-09-19):
+  * [doc] `trl` now has a man page (if manually installed, use `trl --man`);
+          `trl -h` now just prints concise usage information.
+
 * **[v0.3.2](https://github.com/mklement0/trl/compare/v0.3.1...v0.3.2)** (2015-09-15):
   * [dev] Makefile improvements; various other behind-the-scenes tweaks.
 
