@@ -4,6 +4,15 @@ Versioning complies with [semantic versioning (semver)](http://semver.org/).
 
 <!-- NOTE: An entry template for a new version is automatically added each time `make version` is called. Fill in changes afterwards. -->
 
+* **[v0.4.0](https://github.com/mklement0/trl/compare/v0.3.3...v0.4.0)** (2016-06-04):
+  * [breaking change, enhancement] embedded instances of output separators are
+    now get `\`-escaped on output.
+  * [breaking change, enhancement] for multi-line input, any line that isn't 
+    quoted as a whole is now by default interpreted as a single token whose
+    embedded quotes, if any, are treated as literals; use `-x` to suppress this
+    behavior (assumes that your lines contain multiple, indvidually quoted
+    tokens whose embedded quotes of the same type, if any, are `\`-escaped).
+
 * **[v0.3.3](https://github.com/mklement0/trl/compare/v0.3.2...v0.3.3)** (2015-09-19):
   * [doc] `trl` now has a man page (if manually installed, use `trl --man`);
           `trl -h` now just prints concise usage information.

@@ -4,17 +4,18 @@
 
 ## SYNOPSIS
 
-Transform lists of unquoted and/or quoted strings.
+Transforms lists of unquoted and/or quoted strings.
 
     trl [<options>] [<text>...]
 
-    -s <inSep>      input list separator 
+    -s <inSep>      input list separator
     -S <outSep>     output list separator
     -k              keep input item delimiters
     -D <outDelim>   output item delimiter (cannot be combined with -k)
     -W <wrapText>   text to wrap the result list in
     -R <ors>        output record separator (multi-line + multi-item-per-line
                     input only)
+    -x              do not auto-escape quotes on lines not quoted as a whole
 
 By default,
 
@@ -30,29 +31,41 @@ trl *tr*ansforms *l*ists of unquoted and/or quoted strings, by default between
 single- and multi-line forms.  
 Separators, delimiters, and an optional wrapper string are configurable.
 
-Both single- and double-quotes are recognized as input item delimiters.
+Both single- and double-quotes are recognized as input item delimiters,  
+and embedded literal quotes of the same type must be backslash-escaped.
 
-**Caveats**:
+**Note**:
 
- * Unbalanced single- or double-quotes in the input break parsing and result  
-   in unpredictable output.
- * While \' and \" are recognized as literal single- and double-quotes in  
-   the input, they are output as literals without escaping; the only  
-   exception is \' inside a single-quoted string in the input, which is output  
-   as \' as well.
+ * In the input, for embedded quotes of the same type to be properly  
+   recognized as literals inside quoted tokens, they must be  
+   backslash-escaped.  
+
+ * However, with multi-line input, if a given line is not quoted as a whole,  
+   backslash-escaping is implicitly applied to any single- or double-quotes  
+   on the line, allowing lines with imbalanced quotes, such as:  
+     Ten o'clock  
+   By contrast, if your input lines each contain multiple, individually quoted  
+   tokens, use -x to suppress this behavior; otherwise, such lines will be  
+   treated as a single token each, with embedded quotes escaped on output.
+
+ * CAVEAT: Malformed input can result in LOSS OF TOKENS on output.
+
+ * Similarly, on output, embedded instances of the output delimiters are  
+   backslash-escaped.
 
 Input is provided via one or more operands or, in their absence, via stdin.  
+Note that stdin input is read into memory as a whole.  
 To disambiguate operands from options, precede operands with `--` as a  
 separate argument.
 
-Sensible defaults are used for options that aren't explicitly specified;   
-their values depend on whether the input is single- or multi-line:  
+Sensible defaults are used for options that aren't explicitly specified;  
+their values depend on whether the input is single- or multi-line:
 
   * Single-line input:  
   List items are assumed to be separated with whitespace, a comma, or a comma  
   followed by whitespace.  
   They are transformed into multi-line output with each item on its own  
-  line, stripped of surrounding quotes.
+  line, stripped of surrounding quotes.  
 
   * Multi-line input:  
   List items are assumed to be each on a separate line.  
@@ -79,7 +92,7 @@ in Bash, Ksh, or Zsh to create literal control characters; e.g., `$'\n'` and
     default is to remove quoting on input processing; double-quoting is  
     by default applied on *output* when transforming a multi-line list to a  
     single-line list; to unconditionally produce unquoted items, use  
-    `-D ''`, to enforce a uniform quoting character, use `-D <delim>`.  
+    `-D ''`, to enforce a uniform quoting character, use `-D <delim>`.
 
   * `-s <inSep>`, `--separator <inSep>`  
     Specifies the input item separator, i.e., what separates items in the  
@@ -99,7 +112,7 @@ in Bash, Ksh, or Zsh to create literal control characters; e.g., `$'\n'` and
     If a single char. is specified, it is used as both the opening and  
     closing delimiter; otherwise, the first *half* of the specified string  
     is used as the opening delimiter, and the second half as the closing one.
-  
+
   * `-W <wrapText>`, `--out-wrapper <wrapText>`  
     Specifies output wrapper text to place around the entire output list,  
     including  desired whitespace, if any: if a single char. is specified,  
@@ -117,6 +130,13 @@ in Bash, Ksh, or Zsh to create literal control characters; e.g., `$'\n'` and
     input (while transforming the items on each line), or pass an  
     alternative separator to replace them.
 
+  * `-x`, `--as-is`  
+    Disables the auto-escaping behavior for lines of multi-line input that  
+    aren't quoted as a whole.  
+    Use this if your input lines may contain multiple, (possibly selectively)  
+    individually quoted tokens; otherwise, such lines will be treated as a  
+    single token each, with embedded quotes escaped on output.    
+
 ## STANDARD OPTIONS
 
 All standard options provide information only.
@@ -130,7 +150,7 @@ All standard options provide information only.
 
  * `--version`  
    Prints version information.
-  
+
  * `--home`  
    Opens this utility's home page in the system's default web browser.
 
@@ -146,8 +166,8 @@ by running `trl --home`
 ## EXAMPLES
 
 The examples in part use ANSI C-quoted input strings (`$'...'`) for brevity,  
-which are supported in Bash, Ksh, and Zsh.  
- 
+which are supported in Bash, Ksh, and Zsh.
+
     # Default single-line to multi-line transformation.
     $ trl '"one", "two", "three"'
     one
@@ -155,8 +175,8 @@ which are supported in Bash, Ksh, and Zsh.
     three
 
     # Default multi-line to single-line transformation.
-    $ trl <<<$'one\ntwo\nthree'
-    "one", "two", "three"
+    $ trl <<<$'one\ntwo\nthree\n3 " of rain'
+    "one", "two", "three", "3 \" of rain"
 
     # Transform the argument list to a C-style array:
     $ trl -S ', ' -D \" -W '{  }' one two three 'four (4)'

@@ -8,7 +8,7 @@
 - [trl &mdash; introduction](#trl-&mdash-introduction)
 - [Examples](#examples)
 - [Installation](#installation)
-  - [From the npm registry](#from-the-npm-registry)
+  - [Installation from the npm registry](#installation-from-the-npm-registry)
   - [Manual installation](#manual-installation)
 - [Usage](#usage)
 - [License](#license)
@@ -18,18 +18,32 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-# trl &mdash; introduction
+# trl &mdash; transform lists of strings
 
 `trl` is a Unix CLI that ***tr***ansforms ***l***ists of quoted and/or unquoted strings, by default between single- and multi-line forms.
-Both single- and double-quotes are recognized as input field (item) delimiters.
+
+Both single- and double-quotes are recognized as input field (item) delimiters, and embedded quotes of the same type must be `\`-escaped.
 
 Separators, delimiters, and wrapper strings are configurable, allowing for flexible transformations (reformatting) to and from a wide range of simple formats.
 
-_Caveats_:
+**Note**:
 
- * Unbalanced single- or double-quotes in the input break parsing and result in unpredictable output.
- * While `\'` and `\"` are recognized as literal single- and double-quotes in the input, they are output as literals without (re-)escaping; the only exception is `\'` inside a single-quoted string in the input, which outputs `\'` as well.
-  
+ * In the input, for embedded quotes of the same type to be properly  
+   recognized as literals inside quoted tokens, they must be  
+   backslash-escaped.  
+
+ * However, with multi-line input, if a given line is not quoted as a whole,  
+   backslash-escaping is implicitly applied to any single- or double-quotes  
+   on the line, allowing lines with imbalanced quotes, such as `Ten o'clock`.  
+   By contrast, if your input lines each contain multiple, individually quoted  
+   tokens, use `-x` to suppress this behavior; otherwise, such lines will be  
+   treated as a single token each, with embedded quotes escaped on output.
+
+ * CAVEAT: Malformed input can result in LOSS OF TOKENS on output.
+
+ * Similarly, on output, embedded instances of the output delimiters are  
+   `\`-escaped.  
+
 Input is provided via one or more arguments, or via stdin.
 
 See the examples below, concise [usage information](#usage) further below,
@@ -39,10 +53,10 @@ or read the [manual](doc/trl.md).
 
 ```shell
   # Single-line list to multi-line list:
-$ trl '"one", "two", "three"'
+$ trl '"one", "two", "three \" of rain"'
 one
 two
-three
+three " of rain
 
   # List to C-style array:
 $ trl -S ', ' -D \" -W '{  }' one two three 'four (4)'
@@ -52,14 +66,16 @@ $ trl -S ', ' -D \" -W '{  }' one two three 'four (4)'
 $ trl <<EOF
 one
 two
-three
+three " of rain
 EOF
-"one", "two", "three"
+"one", "two", "three \" of rain"
 
-  # Multi-line list with multiple items each to Python array:
-$ trl -s ' ' -S ', ' -D \' -W '[]' <<EOF
+  # Multi-line list with multiple items each to Python array;
+  # note the use of -x to ensure that the indvidually quoted
+  # tokens are properly recognized. 
+$ trl -x -s ' ' -S ', ' -D \' -W '[]' <<EOF
 one "two (2)"
-three four
+three 'four'
 EOF
 ['one', 'two (2)', 'three', 'four']
 
@@ -106,17 +122,18 @@ Find concise usage information below; for complete documentation, read the
 $ trl --help
 
 
-Transform lists of unquoted and/or quoted strings.
+Transforms lists of unquoted and/or quoted strings.
 
     trl [<options>] [<text>...]
 
-    -s <inSep>      input list separator 
+    -s <inSep>      input list separator
     -S <outSep>     output list separator
     -k              keep input item delimiters
     -D <outDelim>   output item delimiter (cannot be combined with -k)
     -W <wrapText>   text to wrap the result list in
     -R <ors>        output record separator (multi-line + multi-item-per-line
                     input only)
+    -x              do not auto-escape quotes on lines not quoted as a whole
 
 By default,
 
@@ -131,7 +148,7 @@ Standard options: --help, --man, --version, --home
 
 # License
 
-Copyright (c) 2015 Michael Klement <mklement0@gmail.com> (http://same2u.net), released under the [MIT license](https://spdx.org/licenses/MIT#licenseText).
+Copyright (c) 2015-2016 Michael Klement <mklement0@gmail.com> (http://same2u.net), released under the [MIT license](https://spdx.org/licenses/MIT#licenseText).
 
 ## Acknowledgements
 
@@ -158,6 +175,15 @@ This project gratefully depends on the following open-source components, accordi
 Versioning complies with [semantic versioning (semver)](http://semver.org/).
 
 <!-- NOTE: An entry template for a new version is automatically added each time `make version` is called. Fill in changes afterwards. -->
+
+* **[v0.4.0](https://github.com/mklement0/trl/compare/v0.3.3...v0.4.0)** (2016-06-04):
+  * [breaking change, enhancement] embedded instances of output separators are
+    now get `\`-escaped on output.
+  * [breaking change, enhancement] for multi-line input, any line that isn't 
+    quoted as a whole is now by default interpreted as a single token whose
+    embedded quotes, if any, are treated as literals; use `-x` to suppress this
+    behavior (assumes that your lines contain multiple, indvidually quoted
+    tokens whose embedded quotes of the same type, if any, are `\`-escaped).
 
 * **[v0.3.3](https://github.com/mklement0/trl/compare/v0.3.2...v0.3.3)** (2015-09-19):
   * [doc] `trl` now has a man page (if manually installed, use `trl --man`);

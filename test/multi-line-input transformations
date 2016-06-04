@@ -77,15 +77,19 @@ EOF
 
 # --
 
-diff <(trl -s ' ' < "${tmpFiles[3]}") - <<'EOF' || die "multiple items per line, default output: unexpected output"
+diff <(trl -s ' ' < "${tmpFiles[3]}") - <<'EOF' || die "multiple items per line, implied auto-escaping, default output: unexpected output"
+"one", "'two", "(2)'", "\"three\"", "four"
+EOF
+
+diff <(trl -x -s ' ' < "${tmpFiles[3]}") - <<'EOF' || die "multiple items per line, no auto-escaping, default output: unexpected output"
 "one", "two (2)", "three", "four"
 EOF
 
-diff <(trl -s ' ' -S @ -D '' < "${tmpFiles[3]}") - <<'EOF' || die "multiple items per line, reformatted with barewords and custom sep: unexpected output"
+diff <(trl -x -s ' ' -S @ -D '' < "${tmpFiles[3]}") - <<'EOF' || die "multiple items per line, reformatted with barewords and custom sep: unexpected output"
 one@two (2)@three@four
 EOF
 
-diff <(trl -s ' ' -S @ -k < "${tmpFiles[3]}") - <<'EOF' || die "multiple items per line, reformatted with quoting retained: unexpected output"
+diff <(trl -x -s ' ' -S @ -k < "${tmpFiles[3]}") - <<'EOF' || die "multiple items per line, reformatted with quoting retained: unexpected output"
 one@'two (2)'@"three"@four
 EOF
 
@@ -95,14 +99,14 @@ diff <(trl -S ' ' -D \' -W '(  )' < "${tmpFiles[2]}") - <<'EOF' || die "to singl
 ( 'one' 'two (2)' 'three' )
 EOF
 
-diff <(trl -s ' ' -S ', ' -D \' -W '[]' < "${tmpFiles[3]}") - <<'EOF' || die "to Python array: unexpected output"
+diff <(trl -x -s ' ' -S ', ' -D \' -W '[]' < "${tmpFiles[3]}") - <<'EOF' || die "to Python array: unexpected output"
 ['one', 'two (2)', 'three', 'four']
 EOF
 
 # --
 
 # Note how \' inside a '-quoted string is retained WITH the \.
-diff <(trl -S @ -D '' < "${tmpFiles[4]}") - <<'EOF' || die "escaped quotes: unexpected output"
+diff <(trl -x -S @ -D '' < "${tmpFiles[4]}") - <<'EOF' || die "escaped quotes: unexpected output"
 one@t"wo@th'ree@fi"ve@fou\'r
 EOF
 

@@ -4,7 +4,7 @@
 
 kTHIS_NAME=${BASH_SOURCE##*/}
 kTHIS_HOMEPAGE='https://github.com/mklement0/trl'
-kTHIS_VERSION='v0.3.3' # NOTE: This assignment is automatically updated by `make version VER=<newVer>` - DO keep the 'v' prefix.
+kTHIS_VERSION='v0.4.0' # NOTE: This assignment is automatically updated by `make version VER=<newVer>` - DO keep the 'v' prefix.
 
 unset CDPATH  # To prevent unexpected `cd` behavior.
 
@@ -31,7 +31,7 @@ openUrl() {
       ;;
     *) # Otherwise, assume a Freedesktop-compliant OS, which includes many Linux distros, PC-BSD, OpenSolaris, ...
       cmd=( xdg-open "$url" )
-      ;; 
+      ;;
   esac
   "${cmd[@]}" || { echo "Cannot locate or failed to open default browser; please go to '$url' manually." >&2; return 1; }
 }
@@ -43,7 +43,7 @@ printManPageSource() {
 
 # Opens the man page, if installed; otherwise, tries to display the embedded Markdown-formatted man-page source; if all else fails: tries to display the man page online.
 openManPage() {
-  local pager embeddedText 
+  local pager embeddedText
   if ! man 1 "$kTHIS_NAME" 2>/dev/null; then
     # 2nd attempt: if present, display the embedded Markdown-formatted man-page source
     embeddedText=$(printManPageSource)
@@ -54,7 +54,7 @@ openManPage() {
     else # 3rd attempt: open the the man page on the utility's website
       openUrl "${kTHIS_HOMEPAGE}/doc/${kTHIS_NAME}.md"
     fi
-  fi  
+  fi
 }
 
 # Prints the contents of the synopsis chapter of the embedded Markdown-formatted man-page source for quick reference.
@@ -124,9 +124,23 @@ dieSyntax() {
 transform() {
   # Note: Thanks to -n, the script passed to -e is executed for *every line* of input.
   perl -MText::ParseWords -ne '
-    chomp;
-    sub enclose { return $ENV{odelimOpen} . $_ . $ENV{odelimClose}; }
+    chomp; # Remove trailing \n.
+    # Apply delimiters
+    sub enclose {
+      my $odelimOpen = $ENV{odelimOpen}; my $odelimClose = $ENV{odelimClose};
+      # Escape embedded instances of the delimiters
+      if ($odelimOpen or $odelimClose) { s/[\Q$odelimOpen$odelimClose\E]/\\$&/g }
+      return $odelimOpen . $_ . $odelimClose;
+    }
+    # If requested (for multi-line input), \-escape double and single quotes on lines that are not quoted as a whole.
+    if ($ENV{autoEscapeUnquotedLines}) {
+      if ($_ !~ /^".*"$/ and $_ !~ /^\047.*\047$/) {
+        s/["\047]/\\$&/g;
+      }
+    }
+    # Parse into words, ignoring empty words.
     my @flds = grep { $_ =~ /\S/ } Text::ParseWords::parse_line($ENV{sep}, $ENV{keepQuotes}, $_);
+    # Output the result with the requested reformatting.
     if ($#flds >= 0) {
       print join($ENV{osep}, map { enclose $_ } @flds);
       if ($ENV{orsep} ne "") { print $ENV{orsep} unless eof; }
@@ -154,7 +168,7 @@ ltrimSingleLine() {
 # NOTE: We explicitly UNSET the variables corresponding to options,
 #       so that we can distinguish between never having set a value and
 #       deliberately having assigned the empty string.
-unset odelim sep osep rsep orsep keepQuotes outWrapper inputIsSingleLine
+unset odelim sep osep rsep orsep keepQuotes outWrapper noAutoEscapeOfUnquotedLines inputIsSingleLine
 
 # ----- BEGIN: OPTIONS PARSING: This is MOSTLY generic code, but:
 #  - SET allowOptsAfterOperands AFTER THIS COMMENT TO 1 to ALLOW OPTIONS TO BE MIXED WITH OPERANDS rather than requiring all options to come before the 1st operand, as POSIX mandates.
@@ -201,7 +215,10 @@ while (( $# )); do
             needOptArg=1
             outWrapper=$optArgReq
             ;;
-          *)            
+          x|as-is) # keep input quoting
+            noAutoEscapeOfUnquotedLines=1
+            ;;
+          *)
             dieSyntax "Unknown option: ${prefix}${optName}."
             ;;
         esac
@@ -213,7 +230,7 @@ while (( $# )); do
     if [[ $1 == '--' ]]; then
       shift; operands+=( "$@" ); break
     elif (( allowOptsAfterOperands )); then
-      operands+=( "$1" ) # continue 
+      operands+=( "$1" ) # continue
     else
       operands=( "$@" )
       break
@@ -227,22 +244,32 @@ done
 
 # Gather the input: remaining operand(s) OR stdin:
 # We also determine if the input is single- or multi-line, as that fundamentally governs the default behavior.
+inputIsSingleLine=1
 if (( $# > 0 )); then
   if (( $# == 1 )); then
     txt=$1
     # Determine if the input - the one and only operand - is single-line or not.
-    [[ $txt =~ $'\n' ]] && inputIsSingleLine=0 || inputIsSingleLine=1
+    [[ $txt =~ $'\n' ]] && inputIsSingleLine=0
   else # if multiple operands were specified, we always consider the input single-line, but convert them to 1-item-per-line presentation so as to preserve item boundaries
-    inputIsSingleLine=1
     txt=$(printf '%s\n' "$@")
   fi
-else # read from stdin    
+else # read from stdin
   txt=$(</dev/stdin) # note: the command substitution strips trailing newlines
-  (( $(grep -c '^' <(printf %s "$txt")) <= 1 )) && inputIsSingleLine=1
+  [[ $txt =~ $'\n' ]] && inputIsSingleLine=0
+fi
+
+# Multi-line input only:
+# Determine if lines that aren't quoted as a whole should have line-internal quote chars. auto-escaped.
+# Default is yes, unless explicitly suppressed.
+autoEscapeUnquotedLines=0
+if (( ! noAutoEscapeOfUnquotedLines && ! inputIsSingleLine )); then
+  autoEscapeUnquotedLines=1
 fi
 
 # Do nothing, if the input is empty.
 (( ${#txt} > 0 )) || exit 0
+
+# echo "?? [$inputIsSingleLine]"; exit 5
 
 # !! If we blindly escape ' and " instances in the input, we lose the ability to treat them as delimiters, so we don't do it.
 # !! Unfortunately, conversely, unbalanced instances cause this script to malfunction (empy or incomplete output, with no error message).
@@ -310,10 +337,9 @@ fi
 
 # pv odelimOpen odelimClose sep osep orsep keepQuotes txt
 
-  # Export the behavior-controlling variables for use by the Perl command inside transform().
-export odelimOpen odelimClose sep osep rsep orsep keepQuotes
-
-  # Perform the transformation.
+  # Export the behavior-controlling variables for use by the Perl command inside transform()
+  # and perform the transformation.
+export odelimOpen odelimClose sep osep rsep orsep keepQuotes autoEscapeUnquotedLines
 transform  < <(printf %s "$txt") || die
 
 # Print closing wrapper string, if any.
@@ -338,7 +364,7 @@ exit 0
 #     - For better plain-text rendering, leave an empty line after a heading
 #       marked-man will remove it from the ROFF version.
 #     - The first heading must be a level-1 heading containing the utility
-#       name and very brief description; append the manual-section number 
+#       name and very brief description; append the manual-section number
 #       directly to the CLI name; e.g.:
 #         # foo(1) - does bar
 #     - The 2nd, level-2 heading must be '## SYNOPSIS' and the chapter's body
@@ -349,7 +375,7 @@ exit 0
 #         in angle brackets; e.g., '<foo>'
 #     - All other headings should be level-2 headings in ALL-CAPS.
 #   - TEXT
-#      - Use NO indentation for regular chapter text; if you do, it will 
+#      - Use NO indentation for regular chapter text; if you do, it will
 #        be indented further than list items.
 #      - Use 4-space indentation, as usual, for code blocks.
 #      - Markup character-styling markup translates to ROFF rendering as follows:
@@ -369,17 +395,18 @@ exit 0
 
 ## SYNOPSIS
 
-Transform lists of unquoted and/or quoted strings.
+Transforms lists of unquoted and/or quoted strings.
 
     trl [<options>] [<text>...]
 
-    -s <inSep>      input list separator 
+    -s <inSep>      input list separator
     -S <outSep>     output list separator
     -k              keep input item delimiters
     -D <outDelim>   output item delimiter (cannot be combined with -k)
     -W <wrapText>   text to wrap the result list in
     -R <ors>        output record separator (multi-line + multi-item-per-line
                     input only)
+    -x              do not auto-escape quotes on lines not quoted as a whole
 
 By default,
 
@@ -395,29 +422,41 @@ trl *tr*ansforms *l*ists of unquoted and/or quoted strings, by default between
 single- and multi-line forms.  
 Separators, delimiters, and an optional wrapper string are configurable.
 
-Both single- and double-quotes are recognized as input item delimiters.
+Both single- and double-quotes are recognized as input item delimiters,  
+and embedded literal quotes of the same type must be backslash-escaped.
 
-**Caveats**:
+**Note**:
 
- * Unbalanced single- or double-quotes in the input break parsing and result  
-   in unpredictable output.
- * While \' and \" are recognized as literal single- and double-quotes in  
-   the input, they are output as literals without escaping; the only  
-   exception is \' inside a single-quoted string in the input, which is output  
-   as \' as well.
+ * In the input, for embedded quotes of the same type to be properly  
+   recognized as literals inside quoted tokens, they must be  
+   backslash-escaped.  
+
+ * However, with multi-line input, if a given line is not quoted as a whole,  
+   backslash-escaping is implicitly applied to any single- or double-quotes  
+   on the line, allowing lines with imbalanced quotes, such as:  
+     Ten o'clock  
+   By contrast, if your input lines each contain multiple, individually quoted  
+   tokens, use -x to suppress this behavior; otherwise, such lines will be  
+   treated as a single token each, with embedded quotes escaped on output.
+
+ * CAVEAT: Malformed input can result in LOSS OF TOKENS on output.
+
+ * Similarly, on output, embedded instances of the output delimiters are  
+   backslash-escaped.
 
 Input is provided via one or more operands or, in their absence, via stdin.  
+Note that stdin input is read into memory as a whole.  
 To disambiguate operands from options, precede operands with `--` as a  
 separate argument.
 
-Sensible defaults are used for options that aren't explicitly specified;   
-their values depend on whether the input is single- or multi-line:  
+Sensible defaults are used for options that aren't explicitly specified;  
+their values depend on whether the input is single- or multi-line:
 
   * Single-line input:  
   List items are assumed to be separated with whitespace, a comma, or a comma  
   followed by whitespace.  
   They are transformed into multi-line output with each item on its own  
-  line, stripped of surrounding quotes.
+  line, stripped of surrounding quotes.  
 
   * Multi-line input:  
   List items are assumed to be each on a separate line.  
@@ -444,7 +483,7 @@ in Bash, Ksh, or Zsh to create literal control characters; e.g., `$'\n'` and
     default is to remove quoting on input processing; double-quoting is  
     by default applied on *output* when transforming a multi-line list to a  
     single-line list; to unconditionally produce unquoted items, use  
-    `-D ''`, to enforce a uniform quoting character, use `-D <delim>`.  
+    `-D ''`, to enforce a uniform quoting character, use `-D <delim>`.
 
   * `-s <inSep>`, `--separator <inSep>`  
     Specifies the input item separator, i.e., what separates items in the  
@@ -464,7 +503,7 @@ in Bash, Ksh, or Zsh to create literal control characters; e.g., `$'\n'` and
     If a single char. is specified, it is used as both the opening and  
     closing delimiter; otherwise, the first *half* of the specified string  
     is used as the opening delimiter, and the second half as the closing one.
-  
+
   * `-W <wrapText>`, `--out-wrapper <wrapText>`  
     Specifies output wrapper text to place around the entire output list,  
     including  desired whitespace, if any: if a single char. is specified,  
@@ -482,6 +521,13 @@ in Bash, Ksh, or Zsh to create literal control characters; e.g., `$'\n'` and
     input (while transforming the items on each line), or pass an  
     alternative separator to replace them.
 
+  * `-x`, `--as-is`  
+    Disables the auto-escaping behavior for lines of multi-line input that  
+    aren't quoted as a whole.  
+    Use this if your input lines may contain multiple, (possibly selectively)  
+    individually quoted tokens; otherwise, such lines will be treated as a  
+    single token each, with embedded quotes escaped on output.    
+
 ## STANDARD OPTIONS
 
 All standard options provide information only.
@@ -495,7 +541,7 @@ All standard options provide information only.
 
  * `--version`  
    Prints version information.
-  
+
  * `--home`  
    Opens this utility's home page in the system's default web browser.
 
@@ -511,8 +557,8 @@ by running `trl --home`
 ## EXAMPLES
 
 The examples in part use ANSI C-quoted input strings (`$'...'`) for brevity,  
-which are supported in Bash, Ksh, and Zsh.  
- 
+which are supported in Bash, Ksh, and Zsh.
+
     # Default single-line to multi-line transformation.
     $ trl '"one", "two", "three"'
     one
@@ -520,8 +566,8 @@ which are supported in Bash, Ksh, and Zsh.
     three
 
     # Default multi-line to single-line transformation.
-    $ trl <<<$'one\ntwo\nthree'
-    "one", "two", "three"
+    $ trl <<<$'one\ntwo\nthree\n3 " of rain'
+    "one", "two", "three", "3 \" of rain"
 
     # Transform the argument list to a C-style array:
     $ trl -S ', ' -D \" -W '{  }' one two three 'four (4)'

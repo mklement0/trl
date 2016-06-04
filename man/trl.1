@@ -1,21 +1,22 @@
-.TH "TRL" "1" "September 2015" "v0.3.3" ""
+.TH "TRL" "1" "June 2016" "v0.4.0" ""
 .SH "NAME"
 \fBtrl\fR \- transform lists of strings
 .SH SYNOPSIS
 .P
-Transform lists of unquoted and/or quoted strings\.
+Transforms lists of unquoted and/or quoted strings\.
 .P
 .RS 2
 .nf
 trl [<options>] [<text>\.\.\.]
 
-\-s <inSep>      input list separator 
+\-s <inSep>      input list separator
 \-S <outSep>     output list separator
 \-k              keep input item delimiters
 \-D <outDelim>   output item delimiter (cannot be combined with \-k)
 \-W <wrapText>   text to wrap the result list in
 \-R <ors>        output record separator (multi\-line + multi\-item\-per\-line
                 input only)
+\-x              do not auto\-escape quotes on lines not quoted as a whole
 .fi
 .RE
 .P
@@ -39,26 +40,44 @@ single\- and multi\-line forms\.
 .br
 Separators, delimiters, and an optional wrapper string are configurable\.
 .P
-Both single\- and double\-quotes are recognized as input item delimiters\.
+Both single\- and double\-quotes are recognized as input item delimiters,
+.br
+and embedded literal quotes of the same type must be backslash\-escaped\.
 .P
-\fBCaveats\fR:
+\fBNote\fR:
 .RS 0
 .IP \(bu 2
-Unbalanced single\- or double\-quotes in the input break parsing and result
+In the input, for embedded quotes of the same type to be properly
 .br
-in unpredictable output\.
+recognized as literals inside quoted tokens, they must be
+.br
+backslash\-escaped\.  
 .IP \(bu 2
-While \\' and \\" are recognized as literal single\- and double\-quotes in
+However, with multi\-line input, if a given line is not quoted as a whole,
 .br
-the input, they are output as literals without escaping; the only
+backslash\-escaping is implicitly applied to any single\- or double\-quotes
 .br
-exception is \\' inside a single\-quoted string in the input, which is output
+on the line, allowing lines with imbalanced quotes, such as:
 .br
-as \\' as well\.
+  Ten o'clock
+.br
+By contrast, if your input lines each contain multiple, individually quoted
+.br
+tokens, use \-x to suppress this behavior; otherwise, such lines will be
+.br
+treated as a single token each, with embedded quotes escaped on output\.
+.IP \(bu 2
+CAVEAT: Malformed input can result in LOSS OF TOKENS on output\.
+.IP \(bu 2
+Similarly, on output, embedded instances of the output delimiters are
+.br
+backslash\-escaped\.
 
 .RE
 .P
 Input is provided via one or more operands or, in their absence, via stdin\.
+.br
+Note that stdin input is read into memory as a whole\.
 .br
 To disambiguate operands from options, precede operands with \fB\-\-\fP as a
 .br
@@ -66,7 +85,7 @@ separate argument\.
 .P
 Sensible defaults are used for options that aren't explicitly specified;
 .br
-their values depend on whether the input is single\- or multi\-line:  
+their values depend on whether the input is single\- or multi\-line:
 .RS 0
 .IP \(bu 2
 Single\-line input:
@@ -77,7 +96,7 @@ followed by whitespace\.
 .br
 They are transformed into multi\-line output with each item on its own
 .br
-line, stripped of surrounding quotes\.
+line, stripped of surrounding quotes\.  
 .IP \(bu 2
 Multi\-line input:
 .br
@@ -122,7 +141,7 @@ by default applied on \fIoutput\fR when transforming a multi\-line list to a
 .br
 single\-line list; to unconditionally produce unquoted items, use
 .br
-\fB\-D ''\fP, to enforce a uniform quoting character, use \fB\-D <delim>\fP\|\.  
+\fB\-D ''\fP, to enforce a uniform quoting character, use \fB\-D <delim>\fP\|\.
 .IP \(bu 2
 \fB\-s <inSep>\fP, \fB\-\-separator <inSep>\fP
 .br
@@ -185,6 +204,18 @@ list\. Specify \fB\-R $'\\n'\fP to instead retain the line breaks from the
 input (while transforming the items on each line), or pass an
 .br
 alternative separator to replace them\.
+.IP \(bu 2
+\fB\-x\fP, \fB\-\-as\-is\fP
+.br
+Disables the auto\-escaping behavior for lines of multi\-line input that
+.br
+aren't quoted as a whole\.
+.br
+Use this if your input lines may contain multiple, (possibly selectively)
+.br
+individually quoted tokens; otherwise, such lines will be treated as a
+.br
+single token each, with embedded quotes escaped on output\.    
 
 .RE
 .SH STANDARD OPTIONS
@@ -223,7 +254,7 @@ by running \fBtrl \-\-home\fP
 .P
 The examples in part use ANSI C\-quoted input strings (\fB$'\.\.\.'\fP) for brevity,
 .br
-which are supported in Bash, Ksh, and Zsh\.  
+which are supported in Bash, Ksh, and Zsh\.
 .P
 .RS 2
 .nf
@@ -234,8 +265,8 @@ two
 three
 
 # Default multi\-line to single\-line transformation\.
-$ trl <<<$'one\\ntwo\\nthree'
-"one", "two", "three"
+$ trl <<<$'one\\ntwo\\nthree\\n3 " of rain'
+"one", "two", "three", "3 \\" of rain"
 
 # Transform the argument list to a C\-style array:
 $ trl \-S ', ' \-D \\" \-W '{  }' one two three 'four (4)'
